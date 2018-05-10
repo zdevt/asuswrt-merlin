@@ -1203,7 +1203,7 @@ ej_dump(int eid, webs_t wp, int argc, char_t **argv)
 	//csprintf("Script : %s, File: %s\n", script, file);
 
 	// run scrip first to update some status
-	if (strcmp(script,"")!=0) sys_script(script);
+	if (strcmp(script,"syscmd.sh")==0) sys_script(script);
 
 	if (strcmp(file, "wlan11b.log")==0)
 		return (ej_wl_status(eid, wp, 0, NULL, 0));	/* FIXME */
@@ -1232,14 +1232,6 @@ ej_dump(int eid, webs_t wp, int argc, char_t **argv)
 		return wl_wps_info(eid, wp, argc, argv, nvram_get_int("wps_band_x"));
 #endif
 	}
-#if 0
-	else if (strcmp(file, "apselect.log")==0)
-		return (ej_getSiteSurvey(eid, wp, 0, NULL));
-	else if (strcmp(file, "apscan")==0)
-		return (ej_SiteSurvey(eid, wp, 0, NULL));
-	else if (strcmp(file, "urelease")==0)
-		return (ej_urelease(eid, wp, 0, NULL));
-#endif
 
 	ret = 0;
 
@@ -1350,7 +1342,23 @@ ej_dump(int eid, webs_t wp, int argc, char_t **argv)
 	}
 #endif /* RTCONFIG_DSL */
 #endif /* RTCONFIG_PUSH_EMAIL */
-	else {
+	else if (strcmp(file, "connect.log")==0) {
+		sprintf(filename, "/tmp/%s", file);
+		system("/usr/sbin/netstat-nat -r state -xn > /tmp/connect.log 2>&1");
+		ret += dump_file(wp, filename);
+	}
+	else if ( strcmp(file, "syscmd.log")==0
+		|| strcmp(file, "pptp_connected")==0
+		|| strcmp(file, "release_note0.txt")==0
+		|| strcmp(file, "release_note1.txt")==0
+		|| strcmp(file, "release_note.txt")==0
+#ifdef RTCONFIG_DSL
+		|| strcmp(file, "adsl/tc_fw_ver_short.txt")==0
+		|| strcmp(file, "adsl/tc_ras_ver.txt")==0
+		|| strcmp(file, "adsl/tc_fw_ver.txt")==0
+		|| strcmp(file, "adsl/adsllog.log")==0
+#endif
+	){
 		sprintf(filename, "/tmp/%s", file);
 		ret += dump_file(wp, filename);
 	}
@@ -3234,18 +3242,16 @@ static int ej_update_variables(int eid, webs_t wp, int argc, char_t **argv) {
 #endif
 
 			if (strlen(action_script) > 0) {
-				char *p1, *p2;
+				char *p1, p2[sizeof(notify_cmd)];
 
-				memset(notify_cmd, 0, sizeof(notify_cmd));
 				if((p1 = strstr(action_script, "_wan_if")))
 				{
-					p1 += 7;
-					strncpy(notify_cmd, action_script, p1 - action_script);
-					p2 = notify_cmd + strlen(notify_cmd);
-					sprintf(p2, " %s%s", wan_unit, p1);
+					p1 += sizeof("_wan_if") - 1;
+					strlcpy(p2, action_script, MIN(p1 - action_script + 1, sizeof(p2)));
+					snprintf(notify_cmd, sizeof(notify_cmd), "%s %s%s", p2, wan_unit, p1);
 				}
 				else
-					strncpy(notify_cmd, action_script, 128);
+					strlcpy(notify_cmd, action_script, sizeof(notify_cmd));
 
 				if(strcmp(action_script, "saveNvram"))
 				{
@@ -14187,7 +14193,11 @@ ej_get_upload_icon_count_list(int eid, webs_t wp, int argc, char **argv) {
 		mkdir(JFFS_USERICON, 0755);
 
 	//Write /jffs/usericon/ file count and list
-	dirp = opendir(JFFS_USERICON); /* There should be error handling after this */
+	dirp = opendir(JFFS_USERICON);
+	if (!dirp) {
+		return 0;
+	}
+
 	while ((entry = readdir(dirp)) != NULL) {
 		if (entry->d_type == DT_REG) { /* If the entry is a regular file */
 			strcat(allMacList, entry->d_name);
@@ -15202,83 +15212,64 @@ ej_abs_networkmap_page(int eid, webs_t wp, int argc, char **argv)
 }
 
 static int
-ej_get_wan_lan_status(int eid, webs_t wp, int argc, char **argv) {
-	char out[128];
-	char cmd[32];
-	int out_len = 0;
-	int ret = 0;
-	int idx = 0;
-	char item[8];
-	char item_tmp[2];
-	char speed[2];
-	FILE *p_fp;
+ej_get_wan_lan_status(int eid, webs_t wp, int argc, char **argv)
+{
+	FILE *fp;
+	char line[128], name[sizeof("WAN XXXXXXXXXX")], *ptr, *item, *port, *speed;
+	int wan_count, lan_count, ret = 0;
 
-	struct json_object *wanLanStatus = NULL;
-	wanLanStatus = json_object_new_object();
+	struct json_object *wanLanStatus = json_object_new_object();
+	struct json_object *wanLanLinkSpeed = json_object_new_object();
+	struct json_object *wanLanCount = json_object_new_object();
 
-	memset(out, 0, sizeof(out));
-	memset(cmd, 0, sizeof(cmd));
+	if (wanLanStatus == NULL || wanLanLinkSpeed == NULL || wanLanCount == NULL)
+		goto error;
 
-	snprintf(cmd, sizeof(cmd), "%s", "ATE Get_WanLanStatus");
+	fp = popen("ATE Get_WanLanStatus", "r");
+	if (fp == NULL)
+		goto error;
 
-	if((p_fp = popen(cmd, "r")) != NULL) {
-		while (!feof(p_fp)){
-			if(fgets(out, sizeof(out), p_fp)) {
-				out_len = strlen(out);
-				if (out_len > 0) {
-					if(out[out_len - 1] == '\n' || out[out_len - 1] == '\r')
-						out[out_len - 1] = '\0';
+	ptr = fgets(line, sizeof(line), fp);
+	pclose(fp);
 
-					//ex, out is W0=M;L1=X;L2=X;L3=X;L4=G; tranform { "WAN 0": "M", "LAN 1": "X", "LAN 2": "X", "LAN 3": "X", "LAN 4": "G" }
-					for (idx = 0; idx < out_len; idx++) {
-						if(out[idx] != '\0') {
-							if(out[idx] >= '0' && out[idx] <= '9') {
-								memset(item_tmp, 0, sizeof(item_tmp));
-								item_tmp[0] = out[idx];
-								item_tmp[1] = '\0';
-								strlcat(item, item_tmp, sizeof(item));
-								json_object_object_add(wanLanStatus, item, json_object_new_string("X")); //default port speed
-							}
-							else {
-								switch (out[idx]) {
-									case 'W' :
-										memset(item, 0, sizeof(item));
-										strlcat(item, "WAN ", sizeof(item));
-										break;
-									case 'L' :
-										memset(item, 0, sizeof(item));
-										strlcat(item, "LAN ", sizeof(item));
-										break;
-									case 'M' :
-									case 'G' :
-									case 'X' :
-										memset(speed, 0, sizeof(speed));
-										speed[0] = out[idx];
-										speed[1] = '\0';
-										json_object_object_add(wanLanStatus, item, json_object_new_string(speed)); //Update port speed
-										break;
-									default :
-										break;
-								}
-							}
-						}
-					}
-					ret = websWrite(wp, "%s", json_object_get_string(wanLanStatus));
-				}
-				else {
-					ret = websWrite(wp, "{}");
-				}
-			}
+	wan_count = lan_count = 0;
+	while ((item = strsep(&ptr, ";\r\n")) != NULL) {
+		if (vstrsep(item, "=", &port, &speed) < 2)
+			continue;
+		switch (*port++) {
+		case 'W':
+			snprintf(name, sizeof(name), "%s%s%s", "WAN", *port ? " " : "", port);
+			wan_count++;
+			break;
+		case 'L':
+			snprintf(name, sizeof(name), "%s%s%s", "LAN", *port ? " " : "", port);
+			lan_count++;
+			break;
+		default:
+			continue;
 		}
+		json_object_object_add(wanLanLinkSpeed, name, json_object_new_string(speed));
 	}
-	else {
-		ret = websWrite(wp, "{}");
-	}
+	json_object_object_add(wanLanCount, "wanCount", json_object_new_int(wan_count));
+	json_object_object_add(wanLanCount, "lanCount", json_object_new_int(lan_count));
+	json_object_object_add(wanLanStatus, "portSpeed", wanLanLinkSpeed);
+	json_object_object_add(wanLanStatus, "portCount", wanLanCount);
 
-	pclose(p_fp);
-	
-	if(wanLanStatus)
+	ptr = (char *)json_object_get_string(wanLanStatus);
+	if (ptr == NULL)
+		goto error;
+
+	ret = websWrite(wp, "%s", ptr);
+
+error:
+	if (ret == 0)
+		ret = websWrite(wp, "{}");
+	if (wanLanStatus)
 		json_object_put(wanLanStatus);
+	if (wanLanLinkSpeed)
+		json_object_put(wanLanLinkSpeed);
+	if (wanLanCount)
+		json_object_put(wanLanCount);
 
 	return ret;
 }
@@ -15798,66 +15789,34 @@ int is_wlif_up(const char *ifname)
 
 int check_xss_blacklist(char* para, int check_www)
 {
-	int i = 0;
-	int file_len;
-	char *query, *para_t;
-	char para_str[256];
-	char filename[128];
-	char url_str[128];
-	memset(filename, 0, sizeof(filename));
-	memset(para_str, 0, sizeof(para_str));
-
-
-	if(para == NULL || !strcmp(para, "")){
-		//_dprintf("check_xss_blacklist: para is NULL\n");
+	char *ptr, filename[256];
+	if (para == NULL || *para == '\0') {
+	//_dprintf("check_xss_blacklist: para is NULL\n");
 		return 1;
 	}
 
-	para_t = strdup(para);
-	while(*para) {
-		//if(*para=='<' || *para=='>' || *para=='%' || *para=='/' || *para=='(' || *para==')' || *para=='&') {
-		if(*para=='<' || *para=='>' || *para=='%' || *para=='(' || *para==')' || *para=='&') {
-			//_dprintf("check_xss_blacklist: para is Invalid\n");
-			free(para_t);
-			return 1;
-		}
-		else {
-			para_str[i] = tolower(*para);
-			i++;
-			para++;
-		}
+	//  if (strpbrk(para, "<>%/()&") != NULL) {
+	if (strpbrk(para, "<>%()&") != NULL) {
+		//_dprintf("check_xss_blacklist: para is Invalid\n");
+		return 1;
 	}
 
-	if(strstr(para_str, "script") || strstr(para_str, "//") ){
+	if (strcasestr(para, "script") != NULL || strstr(para, "//") != NULL) {
 		//_dprintf("check_xss_blacklist: para include script\n");
-		free(para_t);
 		return 1;
 	}
 
-	if(check_www == 1){
-		memset(url_str, 0, sizeof(url_str));
-		if ((query = index(para_t, '?')) != NULL) {
-			file_len = strlen(para_t)-strlen(query);
-
-			if(file_len > sizeof(url_str))
-				file_len = sizeof(url_str);
-
-			strncpy(url_str, para_t, file_len);
-		}
-		else
-		{
-			strncpy(url_str, para_t, sizeof(url_str)-1);
-		}
-
-		snprintf(filename, sizeof(filename), "/www/%s", url_str);
-		if(!check_if_file_exist(filename)){
-			_dprintf("check_xss_blacklist:%s is not in www\n", url_str);
-			free(para_t);
+	if (check_www) {
+		snprintf(filename, sizeof(filename), "/www/%s", para);
+		ptr = strpbrk(filename, "#?");
+		if (ptr)
+			*ptr = '\0';
+		if (!check_if_file_exist(filename)) {
+			_dprintf("check_xss_blacklist: %s is not in www\n", filename);
 			return 1;
 		}
 	}
 
-	free(para_t);
 	return 0;
 }
 

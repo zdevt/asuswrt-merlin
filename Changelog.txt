@@ -1,6 +1,104 @@
 Asuswrt-Merlin Changelog
 ========================
 
+380.70 (8-Apr-2018)
+  - NOTE: This will be the final 380.xx release for
+          all models.  The RT-N66U and RT-AC66U
+          support will be dropped, and all other
+          models have been migrated to the new gen
+          branch, as of release 384.4.
+
+          People who wish to keep getting updates for
+          these two older models should look at the
+          john9527 fork: https://bit.ly/2EV5Oat
+
+  - CHANGED: Tightened security around some config files.
+  - CHANGED: Samba protocol support can now be set to
+             SMBv1, SMBv2, or SMBv1 + SMBv2 (the new default).
+             This will result in a performance drop on all
+             models, but will be more secure.
+             Ideally, people should change it to SMBv2 only,
+             and then reboot all their client devices to start
+             using only the new protocol.
+             If performance is more important than security to
+             you, then you can switch it back to SMBv1, which is
+             the old default behaviour.
+  - CHANGED: Switched to the new Entware repo for armv7 models.
+             To upgrade, run the following commands TWICE:
+
+             opkg update; opkg upgrade
+
+  - FIXED: Apply button not working on the OpenVPN
+           Client page.
+  - FIXED: Potential racing condition that could lead to two
+           instances of miniupnpd running at boot time.
+  - FIXED: Broken FAQ links (backport from 380_8120)
+  - FIXED: Security issue in httpd (CVE-2018-8879).
+  - FIXED: Security issues in httpd (backports from 380_8228)
+
+
+380.69_2 (28-Jan-2018)
+  - NOTE: The official IRC channel has moved to
+          Freenode (#asuswrt).
+
+  - CHANGED: Quantenna watchdog is less likely now to
+             incorrectly assume the QTN CPU has crashed
+             (which can lead to router reboots). (RT-AC87U)
+  - FIXED: IE11 field validation issues on OpenVPN and
+           DHCP pages.
+  - FIXED: Router crash when importing an OpenVPN certificate
+           longer than 3499 characters (the supported limit)
+  - FIXED: Users were allowed to enter invalid characters on
+           some of the OpenVPN client page fields.
+  - FIXED: CVE-2018-5999 in httpd (backport from 384_10007)
+  - FIXED: CVE-2018-5721 in httpd (Merlin & theMIROn)
+
+
+380.69 (11-Dec-2017)
+  - NEW: Added option to disable the Asus NAT tunnel service under
+         Other Settings -> Tweak.  Not quite sure what this
+         partly closed source service is for, but it eats a
+         fair amount of CPU and RAM (backport from 382)
+
+  - CHANGED: Updated odhcp6c to be in sync with upstream
+             (patch by theMIRon)
+  - CHANGED: Updated libogg to 1.3.3 and libvorbis to 1.3.5.
+  - CHANGED: Updated wget to 1.19.2 (fixing connectivity to some
+             TLS 1.2 servers)
+  - CHANGED: Updated RT-N66U and RT-AC66U SDK to GPL 380_8120's
+             (fixing KRACK in repeater/bridge mode)
+  - CHANGED: Updated openssl to 1.0.2n.
+  - CHANGED: Updated tor to 0.2.9.14.
+  - FIXED: allow IA_NA mode downgrade with forced IA_PD
+           (for ISPs with broken IPv6 support)
+           (patch by theMIRon)
+  - FIXED: Trend Micro signature check might randomly fail the
+           RSA validation.
+  - FIXED: Security issues CVE-2017-15275, CVE-2017-12163
+           and CVE-2017-12150 (backported to Samba 3.6 and 3.5)
+  - FIXED: Httpd crash when accessing certain webui pages with
+           no connected Ethernet clients
+  - FIXED: DNSFILTER rules would have priority over OPENVPN Client
+           rules (when client has DNS set to Exclusive mode).
+  - FIXED: traffic routing from the router itself would fail when
+           restarting the firewall while using an ovpn client with
+           policy rules in effect.
+
+
+380.68_4 (4-Oct-2017)
+  - CHANGED: Updated dnsmasq to 2.78 (contains a number of
+             security fixes).
+  - FIXED: rstats could crash at start time in some situations.
+  - FIXED: QOS Scheduler would revert back to sfq after you had
+           re-enabled QOS while (fq_)codel was already selected.
+  - FIXED: Missing tabs on the Parental Control page.
+  - FIXED: Realtek port status wouldn't auto-refresh on the Sysinfo
+           page.
+  - FIXED: Incorrect sort by remaining time on the DHCP Lease page.
+  - FIXED: Some LAN clients couldn't be added to the TOR redirected
+           client list.
+
+
 380.68_2 (12-Sept-2017)
   - FIXED: Some models would show the wrong menu options while in
            Repeater mode.

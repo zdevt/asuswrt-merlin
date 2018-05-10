@@ -3,9 +3,9 @@ Asuswrt-Merlin
 
 About
 -----
-Asuswrt is the name of the common firmware Asus has developed 
-for their various router models.  Originally forked from 
-Tomato, it has since grown into a very different product, removing 
+Asuswrt is the name of the firmware Asus has developed for
+their various router models.  Originally forked from Tomato, 
+it has since grown into a very different product, removing 
 some more technical features that were part of Tomato, but 
 also adding a lot of new original features.
 
@@ -28,7 +28,18 @@ performance, and performance over features.
 
 Supported Devices
 -----------------
-Supported devices are:
+Asuswrt-Merlin is available in two separate branches:
+
+- The original (legacy) Asuswrt-Merlin (up to version 380.xxx)
+- The new generation (current) branch (version 382.xxx and newer)
+
+The legacy 380.xx branch is no longer being actively developed.  
+Support for the RT-N66U and RT-AC66U is being dropped, as 
+these models will not be available on the new generation code base.
+
+
+
+Devices supported on the legacy branch (380.xx):
  * RT-N66U
  * RT-AC66U
  * RT-AC66U_B1 (use the RT-AC68U firmware)
@@ -41,7 +52,19 @@ Supported devices are:
  * RT-AC5300
  * RT-AC1900 & RT-AC1900P (use the RT-AC68U firmware)
 
-Devices that are no longer officially supported:
+Devices supported on the new generation/current branch (382.xx and newer):
+ * RT-AC66U_B1 (use the RT-AC68U firmware)
+ * RT-AC56U
+ * RT-AC68U, RT-AC68P, RT-AC68UF (including HW revision C1 and E1)
+ * RT-AC1900 & RT-AC1900P (use the RT-AC68U firmware)
+ * RT-AC87U
+ * RT-AC3200
+ * RT-AC88U
+ * RT-AC3100
+ * RT-AC5300
+ * RT-AC86U
+
+No longer supported:
  * RT-N16
 
 
@@ -63,17 +86,15 @@ System:
    - User scripts that run on specific events
    - Cron jobs
    - Ability to customize the config files used by the router services
-   - LED control - put your router in "Stealth Mode" by turning off 
-     all LEDs
+   - Ability to turn off router LEDs
    - Entware easy setup script (alternative to Optware - the two are 
-     mutually exclusive)
-   - SNMP support (based on experimental code from Asus)
+     mutually exclusive) (unavailable on RT-AC86U)
+   - SNMP support (except for the RT-AC86U)
    - Nano text editor (for more user-friendly script editing)
 
 
 Disk sharing:
    - Enable/disable the use of shorter share names
-   - Disk spindown after user-configurable inactivity timeout
    - NFS sharing (through webui)
    - Allow or disable WAN access to the FTP server
    - Updated Samba version (3.6), with SMB2.0 support
@@ -91,7 +112,6 @@ Networking:
    - Support for new OpenVPN 2.4 features like NCP and LZ4
    - Netfilter ipset module, for efficient blacklist implementation
    - Configurable min/max UPNP ports
-   - IPSec kernel support (N66/AC66 only)
    - DNS-based Filtering, can be applied globally or per client
    - Custom DDNS (through a user script)
    - TOR support, individual client control (based on experimental code
@@ -100,17 +120,19 @@ Networking:
      destination IPs), sometimes referred to as "selective routing")
    - DNSSEC support
    - fq_codel queue discipline for QoS (ARM-based models only)
+   - Full cone NAT support (RT-AC86U only)
+   - Detailed wireless troubleshooting information (RT-AC86U only)
 
 
 Web interface:
    - Performance improvements
    - Optionally save traffic stats to disk (USB or JFFS partition)
-   - Enhanced traffic monitoring, reporting traffic per IP, and
-     displaying graphical reports of historical data
+   - Enhanced traffic monitoring with graphical reports of
+     historical data
+   - Traffic report per IP (except on RT-AC86U)
    - Hostname field on the DHCP reservation page
    - System information summary page
    - Wifi icon reports the state of both radios
-   - Display the Ethernet port states
    - Wireless site survey
    - Advanced Wireless client list display, including automated refresh
    - Redesigned layout of the various System Log sections
@@ -118,7 +140,7 @@ Web interface:
    - User-provided SSL certificate
 
 
-A few features that first appeared in Asuswrt-Merlin have since been 
+Some features that first appeared in Asuswrt-Merlin have since been 
 integrated/enabled/re-implemented in the official firmware:
 
 - HTTPS webui
@@ -135,6 +157,8 @@ integrated/enabled/re-implemented in the official firmware:
   when possible instead of just NetBIOS names
 - SSHD
 - Improved compatibility with 3TB+ and Advanced Format HDDs
+- Display the Ethernet port states
+- Disk spindown after user-configurable inactivity timeout
 
 
 
@@ -180,24 +204,28 @@ https://github.com/RMerl/asuswrt-merlin/wiki
 
 Source code
 -----------
-The buildable source code can be found on Github, at:
+The source code can be found on Github.
 
+Original legacy branch:
 https://github.com/RMerl/asuswrt-merlin
 
+New generation/current branch (382.xx and newer):
+https://github.com/RMerl/asuswrt-merlin.ng
 
    
 Contact information
 -------------------
 SmallNetBuilder forums (preferred method: http://www.snbforums.com/forums/asuswrt-merlin.42/ as RMerlin)
 Website: https://asuswrt.lostrealm.ca/
-Github: https://github.com/RMerl/asuswrt-merlin
+Github: https://github.com/RMerl
 Email: rmerl@lostrealm.ca
 Twitter: https://twitter.com/RMerlinDev
-IRC: #asuswrt on DALnet
+IRC: #asuswrt on Freenode
 Download: https://asuswrt.lostrealm.ca/download
 
-Development news will be posted on Twitter.  You can also keep a closer 
-eye on development as it happens, through the Github code repository.
+Development news will be posted on Twitter and the support forums.  
+You can also keep a closer eye on development as it happens, through 
+the Github code repository.
 
 For support questions, please use the SmallNetBuilder forums whenever 
 possible.  There's a dedicated Asuswrt-Merlin sub-forum there, under 
@@ -245,8 +273,8 @@ of Good Will.
 Concerning privacy:
 
 The only call back made by this firmware to me is when it checks for the
-availability of a new version, which can be disabled if desired.  More info 
-on the Wiki:
+availability of a new version.  The automated check can be disabled if desired.
+More info on the Wiki:
 
 https://github.com/RMerl/asuswrt-merlin/wiki/RMerl/asuswrt-merlin/wiki/Privacy-disclosure
 

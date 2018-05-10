@@ -1744,7 +1744,7 @@ struct nvram_tuple router_defaults[] = {
 //	{ "smbd_wgroup", "WORKGROUP" },
 	{ "smbd_wins", "0" },
 	{ "smbd_simpler_naming", "0" },
-	{ "smbd_enable_smb2", "0" },
+	{ "smbd_protocol", "2" },	/* 0 = SMB1, 1 = SMB2, 2 = SMB1+SMB2 */
 	{ "enable_samba_tuxera", "0" },
 
 #ifdef RTCONFIG_NFS
@@ -3316,6 +3316,7 @@ struct nvram_tuple router_state_defaults[] = {
 	{ "data_usage_limit", "8" },
 	{ "data_usage_warning", "6" },
 	{ "modem_idletime", "600" },
+	{ "aae_disable_force", "0" },
 	{ NULL, NULL }
 };
 

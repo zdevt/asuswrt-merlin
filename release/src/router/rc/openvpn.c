@@ -505,6 +505,14 @@ void start_vpnclient(int clientNum)
 			fprintf(fp, "iptables -t nat -I POSTROUTING -s %d.%d.%d.%d/%s -o %s -j MASQUERADE\n",
 			        ip[0]&nm[0], ip[1]&nm[1], ip[2]&nm[2], ip[3]&nm[3], nvram_safe_get("lan_netmask"), &iface[0]);
 		}
+		// Disable rp_filter when in policy mode - firewall restart would re-enable it
+		sprintf(&buffer[0], "vpn_client%d_rgw", clientNum);
+		if (nvram_get_int(&buffer[0]) > 1) {
+			fprintf(fp, "for i in /proc/sys/net/ipv4/conf/*/rp_filter ; do\n"); /* */
+			fprintf(fp, "echo 0 > $i\n");
+			fprintf(fp, "done\n");
+		}
+
 		fclose(fp);
 		vpnlog(VPN_LOG_EXTRA,"Done creating firewall rules");
 
@@ -1954,26 +1962,30 @@ void create_openvpn_passwd()
 	fp1=fopen("/etc/shadow.openvpn", "w");
 	fp2=fopen("/etc/passwd.openvpn", "w");
 	fp3=fopen("/etc/group.openvpn", "w");
-	if (!fp1 || !fp2 || !fp3) return;
 
-	nv = nvp = strdup(nvram_safe_get("vpn_serverx_clientlist"));
+	if (fp1 && fp2 && fp3) {
+		nv = nvp = strdup(nvram_safe_get("vpn_serverx_clientlist"));
 
-	if(nv) {
-		while ((b = strsep(&nvp, "<")) != NULL) {
-			if((vstrsep(b, ">", &username, &passwd)!=2)) continue;
-			if(strlen(username)==0||strlen(passwd)==0) continue;
+		if(nv) {
+			while ((b = strsep(&nvp, "<")) != NULL) {
+				if((vstrsep(b, ">", &username, &passwd)!=2)) continue;
+				if(strlen(username)==0||strlen(passwd)==0) continue;
 
-			p = crypt(passwd, salt);
-			fprintf(fp1, "%s:%s:0:0:99999:7:0:0:\n", username, p);
-			fprintf(fp2, "%s:x:%d:%d:::\n", username, id, id);
-			fprintf(fp3, "%s:x:%d:\n", username, id);
-			id++;
+				p = crypt(passwd, salt);
+				fprintf(fp1, "%s:%s:0:0:99999:7:0:0:\n", username, p);
+				fprintf(fp2, "%s:x:%d:%d:::\n", username, id, id);
+				fprintf(fp3, "%s:x:%d:\n", username, id);
+				id++;
+			}
+			free(nv);
 		}
-		free(nv);
 	}
-	fclose(fp1);
-	fclose(fp2);
-	fclose(fp3);
+	if (fp1) fclose(fp1);
+	if (fp2) fclose(fp2);
+	if (fp3) fclose(fp3);
+	chmod("/etc/shadow.openvpn", 0600);
+	chmod("/etc/group.openvpn", 0644);
+	chmod("/etc/passwd.openvpn", 0644);
 }
 
 
